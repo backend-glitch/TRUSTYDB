@@ -1,0 +1,18 @@
+{
+  "name": "trustydb-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Oracle backend for TRUSTYDB adaptive data trust and conflict resolution",
+  "type": "module",
+  "scripts": {
+    "process": "node src/process.js",
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "oracledb": "^6.10.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
