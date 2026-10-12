@@ -146,6 +146,19 @@ database API as well, deploy the Node service separately (for example, with
 the included Render configuration) and keep Oracle credentials only in that
 service's secret environment variables.
 
+## Deploy the CSV review console on GitHub Pages
+
+The repository includes a GitHub Actions workflow at
+`.github/workflows/deploy-pages.yml`. It tests the project, copies the static
+`frontend/` application into `dist/`, and deploys that artifact whenever a
+commit is pushed to `main`.
+
+In the GitHub repository, open **Settings → Pages** and set **Source** to
+**GitHub Actions**. Then push the workflow and your changes to `main`. The
+workflow run will publish the static CSV review console at the Pages URL shown
+in the Actions deployment summary. The Oracle-backed Node API is not deployed
+to Pages; CSV processing continues entirely in the browser.
+
 ## Run with Docker
 
 The Docker image contains the API and the three corrected CSV files. It uses

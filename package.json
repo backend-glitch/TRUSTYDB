@@ -5,6 +5,7 @@
   "description": "Oracle backend for TRUSTYDB adaptive data trust and conflict resolution",
   "type": "module",
   "scripts": {
+    "build": "node scripts/build-vercel-static.mjs",
     "process": "node src/process.js",
     "setup": "node src/setup.js",
     "start": "node src/server.js",
