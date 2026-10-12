@@ -186,5 +186,19 @@ byId('upload-input').addEventListener('change', async (event) => {
 document.addEventListener('click', (event) => { const button = event.target.closest('[data-conflict]'); if (button) openConflict(button.dataset.conflict); });
 byId('close-detail').addEventListener('click', closeDetail); byId('scrim').addEventListener('click', closeDetail);
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeDetail(); });
-document.querySelectorAll('.nav-link').forEach((link) => link.addEventListener('click', () => { document.querySelectorAll('.nav-link').forEach((item) => item.classList.remove('is-active')); link.classList.add('is-active'); }));
+const navigationLinks = [...document.querySelectorAll('.nav-link')];
+const navigationSections = navigationLinks
+  .map((link) => ({ link, section: document.querySelector(link.getAttribute('href')) }))
+  .filter((item) => item.section);
+function setActiveSection(sectionId) {
+  navigationLinks.forEach((link) => link.classList.toggle('is-active', link.getAttribute('href') === `#${sectionId}`));
+}
+navigationLinks.forEach((link) => link.addEventListener('click', () => setActiveSection(link.getAttribute('href').slice(1))));
+const sectionObserver = new IntersectionObserver((entries) => {
+  const visible = entries.filter((entry) => entry.isIntersecting);
+  if (!visible.length) return;
+  visible.sort((left, right) => left.boundingClientRect.top - right.boundingClientRect.top);
+  setActiveSection(visible[0].target.id);
+}, { rootMargin: '-18% 0px -62% 0px', threshold: 0 });
+navigationSections.forEach(({ section }) => sectionObserver.observe(section));
 refresh();
