@@ -1,5 +1,8 @@
 const byId = (id) => document.getElementById(id);
 const state = { conflicts: [], recommendations: [], sources: [] };
+// Relative API calls work when served by Node/Render. The localhost fallback lets
+// the visual review console work when index.html is opened directly from Finder.
+const apiBase = window.location.protocol === 'file:' ? 'http://localhost:3000/api' : '/api';
 
 function text(value) { return String(value ?? '—'); }
 function currency(value) { return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value)); }
@@ -9,7 +12,7 @@ function date(value) { return value ? new Intl.DateTimeFormat(undefined, { dateS
 function escapeHtml(value) { return text(value).replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]); }
 
 async function request(path, options) {
-  const response = await fetch(path, options);
+  const response = await fetch(`${apiBase}${path.replace(/^\/api/, '')}`, options);
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
   return body;

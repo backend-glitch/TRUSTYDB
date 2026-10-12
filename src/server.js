@@ -17,7 +17,12 @@ const contentTypes = {
 };
 
 function send(response, status, payload) {
-  response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+  response.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    // Enables local file preview to read its own local API without affecting
+    // normal same-origin Render use.
+    'Access-Control-Allow-Origin': '*'
+  });
   response.end(JSON.stringify(payload, null, 2));
 }
 
@@ -48,6 +53,14 @@ const server = http.createServer(async (request, response) => {
   let connection;
   let ownsProcessingLock = false;
   try {
+    if (request.method === 'OPTIONS' && url.pathname.startsWith('/api/')) {
+      response.writeHead(204, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      });
+      return response.end();
+    }
     if (request.method === 'GET' && url.pathname === '/api/health') {
       return send(response, 200, { status: 'ok', service: 'trustydb-backend' });
     }
