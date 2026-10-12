@@ -19,6 +19,7 @@
           <a class="nav-link" href="#conflicts">Conflicts</a>
           <a class="nav-link" href="#recommendations">Recommendations</a>
           <a class="nav-link" href="#sources">Source history</a>
+          <a class="nav-link" href="#math-working">Math working</a>
         </nav>
         <div class="sidebar-note">
           <span class="status-dot" id="service-dot" aria-hidden="true"></span>
@@ -44,16 +45,15 @@
 
         <section id="overview" aria-labelledby="overview-title">
           <div class="section-heading">
-            <div><p class="eyebrow">Current database state</p><h2 id="overview-title">At a glance</h2></div>
+            <div><p class="eyebrow">Current analysis</p><h2 id="overview-title">At a glance</h2></div>
             <button class="button button-quiet" id="refresh-button" type="button">Refresh data</button>
           </div>
           <dl class="metrics" aria-live="polite">
             <div><dt>Detected conflicts</dt><dd id="conflict-count">—</dd><small>Distinct PRICE disagreements</small></div>
             <div><dt>Recommendations</dt><dd id="recommendation-count">—</dd><small>Highest-trust records selected</small></div>
             <div><dt>Sources assessed</dt><dd id="source-count">—</dd><small>With current reliability history</small></div>
-            <div><dt>Database status</dt><dd id="database-status">—</dd><small id="database-detail">Checking connection</small></div>
+            <div><dt>Processing mode</dt><dd id="analysis-status">Local</dd><small id="analysis-detail">CSV analysis in this browser</small></div>
           </dl>
-          <p class="upload-hint"><strong>New data?</strong> Upload all conflicting-source CSV files together. TRUSTYDB reads them only in this browser, detects PRICE conflicts, and recommends the highest-trust value. Nothing is stored in Oracle or SQL*Plus. Required columns: <code>source_name, entity_id, product_name, product_title, category, price, stock</code>.</p>
         </section>
 
         <section id="conflicts" class="data-section" aria-labelledby="conflicts-title">
@@ -89,6 +89,13 @@
               <thead><tr><th scope="col">Source</th><th scope="col">Records</th><th scope="col">Verified</th><th scope="col">Correct</th><th scope="col">Reliability</th><th scope="col">Last evaluated</th></tr></thead>
               <tbody id="sources-body"></tbody>
             </table>
+          </div>
+        </section>
+
+        <section id="math-working" class="data-section" aria-labelledby="math-title">
+          <div class="section-heading"><div><p class="eyebrow">Explainable decision</p><h2 id="math-title">Math working</h2></div><p class="section-meta">Calculated from one uploaded conflict</p></div>
+          <div class="math-working" id="math-content">
+            <p>Upload source CSV files to see the complete calculation for a real conflicting record.</p>
           </div>
         </section>
       </main>

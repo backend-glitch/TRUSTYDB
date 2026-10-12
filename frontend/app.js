@@ -1,8 +1,5 @@
 const byId = (id) => document.getElementById(id);
-const state = { conflicts: [], recommendations: [], sources: [], localDetails: new Map(), uploadedRecords: [] };
-// Relative API calls work when served by Node/Render. The localhost fallback lets
-// the visual review console work when index.html is opened directly from Finder.
-const apiBase = window.location.protocol === 'file:' ? 'http://localhost:3000/api' : '/api';
+const state = { conflicts: [], recommendations: [], sources: [], localDetails: new Map(), uploadedRecords: [], mathSample: null };
 
 function text(value) { return String(value ?? '—'); }
 function currency(value) { return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value)); }
@@ -10,13 +7,6 @@ function score(value) { return value == null ? '—' : `${Number(value).toFixed(
 function reliability(value) { return value == null ? '—' : `${Number(value).toFixed(2)}%`; }
 function date(value) { return value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'; }
 function escapeHtml(value) { return text(value).replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]); }
-
-async function request(path, options) {
-  const response = await fetch(`${apiBase}${path.replace(/^\/api/, '')}`, options);
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
-  return body;
-}
 
 function showMessage(message, kind = '') {
   const element = byId('app-message');
@@ -37,37 +27,22 @@ function render() {
   renderRows('conflicts-body', state.conflicts.slice(0, 20), (item) => `<tr><td>#${escapeHtml(item.conflictId)}</td><td>${escapeHtml(item.entityId)}</td><td class="cell-product">${escapeHtml(item.productName)}</td><td>${escapeHtml(item.attributeName)}</td><td><span class="status">${escapeHtml(item.status)}</span></td><td><button class="row-button" type="button" data-conflict="${escapeHtml(item.conflictId)}">Review</button></td></tr>`, 6);
   renderRows('recommendations-body', state.recommendations.slice(0, 20), (item) => `<tr><td>${escapeHtml(item.entityId)}</td><td class="cell-product">${escapeHtml(item.productName)}</td><td>${escapeHtml(item.sourceName)}</td><td>${currency(item.PRICE ?? item.price)}</td><td class="score">${score(item.trustScore)}</td><td><button class="row-button" type="button" data-conflict="${escapeHtml(item.conflictId)}">Evidence</button></td></tr>`, 6);
   renderRows('sources-body', state.sources, (item) => `<tr><td><strong>${escapeHtml(item.sourceName)}</strong></td><td>${text(item.totalRecords)}</td><td>${text(item.verifiedRecords)}</td><td>${text(item.correctRecords)}</td><td class="score">${reliability(item.reliabilityScore)}</td><td>${date(item.lastUpdated)}</td></tr>`, 6);
+  renderMathWorking();
 }
 
-async function refresh() {
-  if (window.location.protocol === 'file:') {
-    byId('service-dot').className = 'status-dot is-ok';
-    byId('service-status').textContent = 'Local CSV mode';
-    byId('database-status').textContent = 'Not used';
-    byId('database-detail').textContent = 'Nothing stored in Oracle';
-    render();
-    return;
-  }
+function refresh() {
   clearMessage();
-  const [health, database, conflicts, recommendations, sources] = await Promise.allSettled([
-    request('/api/health'), request('/api/health/database'), request('/api/conflicts'), request('/api/recommendations'), request('/api/sources')
-  ]);
-  const serviceOk = health.status === 'fulfilled';
-  const databaseOk = database.status === 'fulfilled';
-  byId('service-dot').className = `status-dot ${serviceOk ? 'is-ok' : 'is-error'}`;
-  byId('service-status').textContent = serviceOk ? 'Service available' : 'Service unavailable';
-  byId('database-status').textContent = databaseOk ? 'Connected' : 'Unavailable';
-  byId('database-detail').textContent = databaseOk ? 'Oracle reached successfully' : 'Check database configuration';
-  state.conflicts = conflicts.status === 'fulfilled' ? conflicts.value : [];
-  state.recommendations = recommendations.status === 'fulfilled' ? recommendations.value : [];
-  state.sources = sources.status === 'fulfilled' ? sources.value : [];
+  byId('service-dot').className = 'status-dot is-ok';
+  byId('service-status').textContent = 'Ready for CSV analysis';
+  byId('analysis-status').textContent = 'Local';
+  byId('analysis-detail').textContent = 'CSV analysis in this browser';
   render();
-  if (!databaseOk) showMessage('The interface is available, but Oracle data could not be loaded. Configure the database connection and refresh.', 'error');
 }
 
 async function openConflict(conflictId) {
   try {
-    const detail = state.localDetails.get(Number(conflictId)) || await request(`/api/conflicts/${conflictId}`);
+    const detail = state.localDetails.get(Number(conflictId));
+    if (!detail) throw new Error('Upload CSV files first to view conflict evidence.');
     const recommendedId = detail.recommendation?.recordId;
     byId('detail-title').textContent = detail.productName;
     byId('detail-content').innerHTML = `<p class="detail-meta">Entity ${escapeHtml(detail.entityId)} · ${escapeHtml(detail.attributeName)} conflict · ${escapeHtml(detail.category)}</p><div class="evidence">${detail.records.map((record) => `<div class="evidence-row"><div><strong>${escapeHtml(record.sourceName)}</strong><small>${escapeHtml(record.productTitle)}</small></div><div><small>Reported price</small><strong>${currency(record.PRICE ?? record.price)}</strong></div><div><small>Trust score</small><strong>${score(record.trustScore)}${Number(record.recordId) === Number(recommendedId) ? ' · Selected' : ''}</strong></div></div>`).join('')}</div>${detail.recommendation ? `<div class="reason"><strong>Why this record was selected</strong><br>${escapeHtml(detail.recommendation.reason)}</div>` : ''}`;
@@ -78,6 +53,29 @@ async function openConflict(conflictId) {
   } catch (error) { showMessage(error.message, 'error'); }
 }
 function closeDetail() { byId('detail-panel').classList.remove('is-open'); byId('detail-panel').setAttribute('aria-hidden', 'true'); byId('scrim').hidden = true; }
+
+function renderMathWorking() {
+  const target = byId('math-content');
+  const sample = state.mathSample;
+  if (!sample) {
+    target.innerHTML = '<p>Upload source CSV files to see the complete calculation for a real conflicting record.</p>';
+    return;
+  }
+  const { winner, reference, values } = sample;
+  const { reliability: sourceReliability, freshness, verification, consistency: consistencyValue } = winner.factors;
+  const prices = values.map((value) => currency(value)).join(', ');
+  target.innerHTML = `<p><strong>Sample entity ${escapeHtml(sample.entityId)}:</strong> ${escapeHtml(sample.productName)}</p>
+    <div class="math-grid"><div><small>Reported prices</small><strong>${escapeHtml(prices)}</strong></div><div><small>Median reference</small><strong>${currency(reference)}</strong></div><div><small>Selected source</small><strong>${escapeHtml(winner.sourceName)}</strong></div></div>
+    <pre class="formula">1. Reference price = median(${prices}) = ${currency(reference)}
+2. Source reliability = average consistency for ${winner.sourceName} across uploaded records = ${sourceReliability.toFixed(4)}
+3. Freshness = 1.0000 (the selected CSV was just uploaded)
+4. Consensus confirmation = ${verification.toFixed(4)}
+5. Consistency = max(0, 1 − |${currency(winner.price)} − ${currency(reference)}| / ${currency(reference)}) = ${consistencyValue.toFixed(4)}
+
+Trust score = 100 × (0.40 × ${sourceReliability.toFixed(4)} + 0.20 × ${freshness.toFixed(4)} + 0.20 × ${verification.toFixed(4)} + 0.20 × ${consistencyValue.toFixed(4)})
+            = ${winner.trustScore.toFixed(2)}</pre>
+    <p class="math-note">The record with the highest score is recommended. The median is calculated before scoring, so the result is not based on a hard-coded preferred source.</p>`;
+}
 
 const requiredColumns = ['source_name', 'entity_id', 'product_name', 'product_title', 'category', 'price', 'stock'];
 function parseCsv(text) {
@@ -116,6 +114,7 @@ function confirmation(value, reference) {
   return deviation <= .02 ? 1 : Math.max(0, 1 - (deviation - .02) / .2);
 }
 function processInBrowser(records) {
+  state.mathSample = null;
   const byEntity = new Map();
   for (const record of records) {
     const group = byEntity.get(Number(record.entityId)) || [];
@@ -148,13 +147,14 @@ function processInBrowser(records) {
     const recommendation = { recommendationId: conflictId, conflictId, entityId, productName: winner.productName, sourceName: winner.sourceName, recordId: winner.recordId, price: winner.price, trustScore: winner.trustScore, reason: recommendationReason };
     conflicts.push(conflict); recommendations.push(recommendation);
     details.set(conflictId, { ...conflict, records: scored, recommendation: { recordId: winner.recordId, sourceName: winner.sourceName, price: winner.price, reason: recommendationReason } });
+    if (!state.mathSample) state.mathSample = { entityId, productName: winner.productName, reference, values: group.map((record) => record.price), winner };
     conflictId += 1;
   }
   state.conflicts = conflicts; state.recommendations = recommendations;
   state.sources = [...totals].map(([sourceName, value]) => ({ sourceName, totalRecords: value.total, verifiedRecords: 0, correctRecords: 0, reliabilityScore: (reliabilityBySource.get(sourceName) || 0) * 100, lastUpdated: new Date().toISOString() }));
   state.localDetails = details; state.uploadedRecords = records; render();
   byId('service-dot').className = 'status-dot is-ok'; byId('service-status').textContent = 'Local CSV mode';
-  byId('database-status').textContent = 'Not used'; byId('database-detail').textContent = 'No SQL storage';
+  byId('analysis-status').textContent = 'Local'; byId('analysis-detail').textContent = 'CSV analysis in this browser';
   return { totalRecords: records.length, sourceCount: state.sources.length, conflictsDetected: conflicts.length, recommendationsGenerated: recommendations.length };
 }
 async function uploadSources(files) {
@@ -166,7 +166,7 @@ async function uploadSources(files) {
   return processInBrowser(records);
 }
 
-byId('refresh-button').addEventListener('click', () => refresh().catch((error) => showMessage(error.message, 'error')));
+byId('refresh-button').addEventListener('click', refresh);
 byId('process-button').addEventListener('click', async () => {
   if (!state.uploadedRecords.length) { byId('upload-input').click(); return; }
   const report = processInBrowser(state.uploadedRecords);
@@ -187,4 +187,4 @@ document.addEventListener('click', (event) => { const button = event.target.clos
 byId('close-detail').addEventListener('click', closeDetail); byId('scrim').addEventListener('click', closeDetail);
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeDetail(); });
 document.querySelectorAll('.nav-link').forEach((link) => link.addEventListener('click', () => { document.querySelectorAll('.nav-link').forEach((item) => item.classList.remove('is-active')); link.classList.add('is-active'); }));
-refresh().catch((error) => showMessage(error.message, 'error'));
+refresh();
