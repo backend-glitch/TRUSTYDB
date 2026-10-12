@@ -1,0 +1,65 @@
+source_name,entity_id,product_name,product_title,category,price,stock,condition,last_verified,availability,currency,vendor_rating
+SOURCE_C,1,Apple iPhone 8 Plus 64GB,apple iphone 8 plus 64gb silver,Mobile Phones,18117.88,16,New,2026-05-03,Out of Stock,INR,3.4
+SOURCE_C,2,Apple iPhone 7 Plus 32GB,apple mnqq2b/a iphone 7 plus 32gb 5.5 12mp sim free smartphone in rose gold,Mobile Phones - SourceVariant2,76591.08,41,New,2026-06-06,In Stock,INR,3.5
+SOURCE_C,3,Apple iPhone 7 32GB,apple grade b iphone 7 32gb gold handset only,Mobile Phones - SourceVariant2,142964.34,52,Used,2026-07-09,Limited,INR,3.6
+SOURCE_C,4,Apple iPhone 8 64GB,startech.com usb c to hdmi multi monitor adapter 3 port mst hub usb type c to hdmi monitor splitter usb 3.1 type c black,Mobile Phones - SourceVariant2,131118.84,49,Refurbished,2026-08-12,Out of Stock,INR,3.7
+SOURCE_C,5,Apple iPhone X 64GB,apple iphone x 64gb space grey,Mobile Phones - SourceVariant2,51358.32,74,New,2026-09-15,In Stock,INR,3.8
+SOURCE_C,6,Samsung Galaxy S8 64GB,grade a samsung galaxy s8 pink 5.8 64gb 4g unlocked sim free,Mobile Phones,44694.2,85,Used,2026-01-18,Limited,INR,3.9
+SOURCE_C,7,Apple iPhone X 256GB,apple mqaf2b/a iphone x 256gb 4.8 12mp sim free smartphone in space grey,Mobile Phones - SourceVariant2,102338.44,82,New,2026-02-21,Out of Stock,INR,4.0
+SOURCE_C,8,Apple iPhone 7 128GB,apple iphone 7 4.7 inch multi touch 128gb wlan wwan bluetooth camera fingerprint sensor ios10 rose gold,Mobile Phones - SourceVariant2,85519.08,107,New,2026-03-24,In Stock,INR,4.1
+SOURCE_C,9,Apple iPhone 8 Plus 256GB,apple iphone 8 plus 256gb gold,Mobile Phones - SourceVariant2,114193.61,23,Used,2026-04-27,Limited,INR,4.2
+SOURCE_C,10,Apple iPhone 8 256GB,apple iphone 8 256gb gold,Mobile Phones - SourceVariant2,113766.64,20,Refurbished,2026-05-03,Out of Stock,INR,4.3
+SOURCE_C,11,Samsung Galaxy S7 32GB,samsung galaxy s7 sm g930f 32gb unlocked smartphone black,Mobile Phones,117812.45,45,New,2026-06-06,In Stock,INR,4.4
+SOURCE_C,12,Apple iPhone 7 Plus 128GB,apple iphone 7 plus 128 gb diamant schwarz,Mobile Phones - SourceVariant2,52883.52,56,Used,2026-07-09,Limited,INR,4.5
+SOURCE_C,13,Samsung Galaxy S8+ 64GB,grade c samsung galaxy s8 black 6.2 64gb 4g unlocked sim free,Mobile Phones - Refurbished - SourceVariant2,80004.46,53,New,2026-08-12,Out of Stock,INR,4.6
+SOURCE_C,14,Apple iPhone 6S 128GB,iphone 6s space grey 128gb 4.7 unlocked sim free,Mobile Phones - SourceVariant2,129187.86,78,New,2026-09-15,In Stock,INR,4.7
+SOURCE_C,15,Apple iPhone 6S Plus 32GB,apple mn2v2b/a iphone 6s plus 32gb 5.5 12mp sim free smartphone in space grey,Mobile Phones - SourceVariant2,81737.66,89,Used,2026-01-18,Limited,INR,4.8
+SOURCE_C,16,Samsung Galaxy S9 64GB,samsung galaxy s9 64 gb dual sim midnight black android 8.0 international version,Mobile Phones,84910.24,86,Refurbished,2026-02-21,Out of Stock,INR,4.9
+SOURCE_C,17,Apple iPhone 6S 32GB,apple iphone 6s 32 gb silver,Mobile Phones - SourceVariant2,87129.0,111,New,2026-03-24,In Stock,INR,3.0
+SOURCE_C,18,Apple iPhone 6S Plus 128 GB,apple iphone 6s plus 128 gb sim free smartphone gold refurbished,Mobile Phones - SourceVariant2,97311.23,27,Used,2026-04-27,Limited,INR,3.1
+SOURCE_C,19,Samsung Galaxy A3 SM-A320F,samsung galaxy a3 2017,Mobile Phones - SourceVariant2,26379.44,24,New,2026-05-03,Out of Stock,INR,3.2
+SOURCE_C,20,Samsung Galaxy A5 SM-A520F,grade c samsung galaxy a5 2017 gold 5.2 32gb 4g unlocked sim free,Mobile Phones - SourceVariant2,134670.2,49,New,2026-06-06,In Stock,INR,3.3
+SOURCE_C,21,Samsung Galaxy Note 8 64GB,samsung galaxy note 8 sm n950f sim free smartphone 64gb midnight black,Mobile Phones,70501.93,60,Used,2026-07-09,Limited,INR,3.4
+SOURCE_C,22,Doro 5030,doro 5030,Mobile Phones - SourceVariant2,112636.64,57,Refurbished,2026-08-12,Out of Stock,INR,3.5
+SOURCE_C,23,Apple iPhone SE 32GB,apple iphone se 4 inch multi touch 32gb wlan wwan bluetooth camera fingerprint sensor ios9 silver,Mobile Phones - SourceVariant2,90916.06,82,New,2026-09-15,In Stock,INR,3.6
+SOURCE_C,24,Samsung Galaxy S7 Edge 32GB,grade b samsung s7 edge black 32gb unlocked sim free,Mobile Phones - SourceVariant2,85158.24,93,Used,2026-01-18,Limited,INR,3.7
+SOURCE_C,25,Sony Xperia XA2 Ultra 32GB,sony xperia xa2 ultra dual sim gold,Mobile Phones - SourceVariant2,19624.86,90,New,2026-02-21,Out of Stock,INR,3.8
+SOURCE_C,26,Samsung Galaxy J5 SM-J530,samsung galaxy j5 2017 16gb sim free smartphone gold sm j530f,Mobile Phones - Refurbished,41299.45,20,New,2026-03-24,In Stock,INR,3.9
+SOURCE_C,27,Sony Xperia XZ1 Compact,sony xperia xz1 compact 4.6 inch hd screen android 8.0 oreo uk sim free smartphone with 4gb ram and 32 gb storage single sim black,Mobile Phones - SourceVariant2,62257.92,31,Used,2026-04-27,Limited,INR,4.0
+SOURCE_C,28,Apple iPhone SE 128GB,iphone se 128gb silver,Mobile Phones - SourceVariant2,114150.68,28,Refurbished,2026-05-03,Out of Stock,INR,4.1
+SOURCE_C,29,Sony Xperia L1,sony xperia l1,Mobile Phones - SourceVariant2,122967.61,53,New,2026-06-06,In Stock,INR,4.2
+SOURCE_C,30,Samsung Galaxy J3 SM-J320F,open box samsung galaxy j3 2016 smartphone,Mobile Phones - SourceVariant2,115926.58,64,Used,2026-07-09,Limited,INR,4.3
+SOURCE_C,31,Sony Xperia XZ1,sony xperia xz1 5.2 4gb ram 32 gb storage single sim smartphon,Mobile Phones,33794.38,61,New,2026-08-12,Out of Stock,INR,4.4
+SOURCE_C,32,Doro 5516,doro 5516,Mobile Phones - SourceVariant2,72283.32,86,New,2026-09-15,In Stock,INR,4.5
+SOURCE_C,33,Sony Xperia XA1,sony xperia xa1,Mobile Phones - SourceVariant2,110783.29,97,Used,2026-01-18,Limited,INR,4.6
+SOURCE_C,34,Apple iPhone XS Max 64GB,apple iphone xs max 64gb silver,Mobile Phones - SourceVariant2,125001.81,94,Refurbished,2026-02-21,Out of Stock,INR,4.7
+SOURCE_C,35,Sony Xperia XA2,sony xperia xa2 smartphone pink,Mobile Phones - SourceVariant2,137733.6,24,New,2026-03-24,In Stock,INR,4.8
+SOURCE_C,36,Samsung Galaxy S9+ 128 GB,samsung galaxy s9 plus 6.2 dual sim/hybrid sim 128gb sm g965f factory unlocked 4g smartphone coral blue,Mobile Phones,108371.04,35,Used,2026-04-27,Limited,INR,4.9
+SOURCE_C,37,Huawei Honor 10 128GB Dual SIM,honor 10 128gb dual sim smartphone phantom blue sim free/ unlocked,Mobile Phones - SourceVariant2,77163.0,32,New,2026-05-03,Out of Stock,INR,3.0
+SOURCE_C,38,Sony Xperia XA1 Ultra 32GB,13.97 cm 5.5 hd 720p mediatek quad core 64bit mt6737t 1.45ghzx4,Mobile Phones - SourceVariant2,140914.75,57,New,2026-06-06,In Stock,INR,3.1
+SOURCE_C,39,Doro Secure 580,doro secure 580 white 3g sim free elderly and vunerable friendly with gps tracking hearing aid compatible,Mobile Phones - Refurbished - SourceVariant2,121272.17,68,Used,2026-07-09,Limited,INR,3.2
+SOURCE_C,40,Samsung Galaxy S9+ 64GB,samsung galaxy s9 plus dual sim 64gb midnight black android 8.0 oreo spanish version,Mobile Phones - SourceVariant2,110738.2,65,Refurbished,2026-08-12,Out of Stock,INR,3.3
+SOURCE_C,41,Nokia 8 64GB,nokia 8 sim free smartphone tempered blue,Mobile Phones,18004.97,90,New,2026-09-15,In Stock,INR,3.4
+SOURCE_C,42,Samsung Galaxy A8 SM-A530F,grade b samsung galaxy a8 gold,Mobile Phones - SourceVariant2,107599.76,101,Used,2026-01-18,Limited,INR,3.5
+SOURCE_C,43,Doro 6520,doro 6520,Mobile Phones - SourceVariant2,110437.85,98,New,2026-02-21,Out of Stock,INR,3.6
+SOURCE_C,44,Apple iPhone 7 256GB,apple iphone 7 256 gb matt schwarz,Mobile Phones - SourceVariant2,43388.84,28,New,2026-03-24,In Stock,INR,3.7
+SOURCE_C,45,Doro 8040,8040 5in 16gb black,Mobile Phones - SourceVariant2,95769.54,39,Used,2026-04-27,Limited,INR,3.8
+SOURCE_C,46,Blackberry KEYone 32GB,blackberry keyone 4.5 32gb 4g unlocked sim free,Mobile Phones,74874.85,36,Refurbished,2026-05-03,Out of Stock,INR,3.9
+SOURCE_C,47,Moto G6 32GB,motorola moto g6 play 32gb deep indigo,Mobile Phones - SourceVariant2,23028.04,61,New,2026-06-06,In Stock,INR,4.0
+SOURCE_C,48,Doro PhoneEasy 6030,doro 6030 easy to use camera phone with large display graphite/white,Mobile Phones - SourceVariant2,128679.76,72,Used,2026-07-09,Limited,INR,4.1
+SOURCE_C,49,LG K10 M250N,lg k10 2017 sim free smartphone black,Mobile Phones - SourceVariant2,19956.57,69,New,2026-08-12,Out of Stock,INR,4.2
+SOURCE_C,50,CAT S41 Dual SIM,cat s41 dual sim schwarz,Mobile Phones - SourceVariant2,14104.79,94,New,2026-09-15,In Stock,INR,4.3
+SOURCE_C,51,Samsung Galaxy Xcover 4 SM-G390F,samsung galaxy xcover 4 16gb black,Mobile Phones,26575.28,105,Used,2026-01-18,Limited,INR,4.4
+SOURCE_C,52,Samsung Galaxy J3 SM-J330F Dual SIM,samsung galaxy j3 2017 uk sim free smartphone gold,Mobile Phones - Refurbished - SourceVariant2,134176.68,7,Refurbished,2026-02-21,Out of Stock,INR,4.5
+SOURCE_C,53,LG G6 32GB,lg g6 32gb astro black,Mobile Phones - SourceVariant2,45648.67,32,New,2026-03-24,In Stock,INR,4.6
+SOURCE_C,54,LG G7 ThinQ,lg g7 thinq 64gb aurora black,Mobile Phones - SourceVariant2,86194.24,43,Used,2026-04-27,Limited,INR,4.7
+SOURCE_C,55,Doro 8035,doro 8035 black/blue 5 16gb 4g unlocked sim free,Mobile Phones - SourceVariant2,125869.47,40,New,2026-05-03,Out of Stock,INR,4.8
+SOURCE_C,80,Doro 8020X,Doro 8020X,Mobile Phones,72007.33,20,Used,2026-09-01,In Stock,INR,4.0
+SOURCE_C,81,Apple iPhone XS 512GB,Apple iPhone XS 512GB,Mobile Phones,115290.0,20,Refurbished,2026-09-01,In Stock,INR,4.0
+SOURCE_C,82,Apple iPhone XS Max 256GB,Apple iPhone XS Max 256GB,Mobile Phones,96218.0,20,New,2026-09-01,In Stock,INR,4.0
+SOURCE_C,83,Samsung Galaxy A6 32GB,Samsung Galaxy A6 32GB,Mobile Phones,44633.98,20,Used,2026-09-01,In Stock,INR,4.0
+SOURCE_C,84,Google Pixel 2 64GB,Google Pixel 2 64GB,Mobile Phones,30944.82,20,Refurbished,2026-09-01,In Stock,INR,4.0
+SOURCE_C,85,ASUS ZenFone 4 (ZE554KL) 4GB RAM Dual SIM,ASUS ZenFone 4 (ZE554KL) 4GB RAM Dual SIM,Mobile Phones,28810.08,20,New,2026-09-01,In Stock,INR,4.0
+SOURCE_C,86,Apple iPhone XS Max 512GB,Apple iPhone XS Max 512GB,Mobile Phones,91459.0,20,Used,2026-09-01,In Stock,INR,4.0
+SOURCE_C,87,Xiaomi Mi A2 Lite 64GB Dual SIM,Xiaomi Mi A2 Lite 64GB Dual SIM,Mobile Phones,90185.76,20,Refurbished,2026-09-01,In Stock,INR,4.0
+SOURCE_C,88,Samsung Galaxy J6,Samsung Galaxy J6,Mobile Phones,125092.63,20,New,2026-09-01,In Stock,INR,4.0

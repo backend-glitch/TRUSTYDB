@@ -54,6 +54,37 @@ async function openConflict(conflictId) {
 }
 function closeDetail() { byId('detail-panel').classList.remove('is-open'); byId('detail-panel').setAttribute('aria-hidden', 'true'); byId('scrim').hidden = true; }
 
+function decisionVisual(sample) {
+  const detail = state.localDetails.get(Number(sample.conflictId));
+  if (!detail) return '';
+  const selectedId = Number(detail.recommendation?.recordId);
+  const safeScore = (value) => Math.max(0, Math.min(100, Number(value) || 0));
+  const bars = detail.records.map((record) => {
+    const selected = Number(record.recordId) === selectedId;
+    const confidence = safeScore(record.trustScore);
+    return `<li class="decision-source${selected ? ' is-selected' : ''}">
+      <div class="decision-source-label"><strong>${escapeHtml(record.sourceName)}</strong><span>${escapeHtml(record.selectedValue)}</span></div>
+      <div class="decision-bar" role="progressbar" aria-label="${escapeHtml(record.sourceName)} trust score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${confidence}"><span style="width:${confidence}%"></span></div>
+      <output>${score(record.trustScore)}</output>
+    </li>`;
+  }).join('');
+  const factorRows = [
+    ['Source reliability', sample.winner.factors.reliability, 40],
+    ['Freshness', sample.winner.factors.freshness, 20],
+    ['Consensus confirmation', sample.winner.factors.verification, 20],
+    ['Reference consistency', sample.winner.factors.consistency, 20]
+  ].map(([label, value, weight]) => {
+    const contribution = (Number(value) || 0) * weight;
+    return `<li><span>${label} <small>(${weight}%)</small></span><div class="factor-bar" aria-hidden="true"><span style="width:${Math.max(0, Math.min(100, Number(value) * 100 || 0))}%"></span></div><strong>${contribution.toFixed(2)}</strong></li>`;
+  }).join('');
+  return `<section class="decision-visual" aria-labelledby="decision-visual-title">
+    <div class="decision-visual-heading"><div><p class="eyebrow">Decision simulation</p><h3 id="decision-visual-title">Why ${escapeHtml(sample.winner.sourceName)} is selected</h3></div><p>Trust score out of 100</p></div>
+    <div class="decision-scale" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+    <ol class="decision-sources">${bars}</ol>
+    <div class="factor-summary"><div><p class="eyebrow">Selected record score</p><strong>${score(sample.winner.trustScore)}</strong><span>Weighted result</span></div><ol>${factorRows}</ol></div>
+  </section>`;
+}
+
 function renderMathWorking() {
   const target = byId('math-content');
   const sample = state.mathSample;
@@ -71,6 +102,7 @@ function renderMathWorking() {
     : `1 when the value matches the ${referenceMethod}, otherwise 0 = ${consistencyValue.toFixed(4)}`;
   target.innerHTML = `<p><strong>Sample entity ${escapeHtml(sample.entityId)}:</strong> ${escapeHtml(sample.productName)} · ${escapeHtml(sample.attributeName)}</p>
     <div class="math-grid"><div><small>Reported values</small><strong>${escapeHtml(reportedValues)}</strong></div><div><small>Reference (${referenceMethod})</small><strong>${escapeHtml(referenceValue)}</strong></div><div><small>Selected source</small><strong>${escapeHtml(winner.sourceName)}</strong></div></div>
+    ${decisionVisual(sample)}
     <pre class="formula">1. Reference value = ${referenceMethod}(${reportedValues}) = ${referenceValue}
 2. Source reliability = average consistency for ${winner.sourceName} across uploaded records = ${sourceReliability.toFixed(4)}
 3. Freshness = 1.0000 (the selected CSV was just uploaded)
@@ -82,144 +114,22 @@ Trust score = 100 × (0.40 × ${sourceReliability.toFixed(4)} + 0.20 × ${freshn
     <p class="math-note">The record with the highest score is recommended. The median is calculated before scoring, so the result is not based on a hard-coded preferred source.</p>`;
 }
 
-const sourceAliases = ['source', 'sourcename', 'vendor', 'vendorname', 'merchant', 'seller', 'provider', 'supplier'];
-const entityAliases = ['entityid', 'entity', 'clusterid', 'cluster', 'productid', 'productcode', 'itemid', 'itemcode', 'sku', 'id', 'code', 'name', 'title', 'productname'];
-const labelAliases = ['productname', 'producttitle', 'title', 'name', 'itemname', 'description'];
-const normalizedName = (value) => String(value).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-const displayName = (value) => String(value).trim().replace(/[_-]+/g, ' ');
-function parseCsv(text) {
-  const rows = []; let row = []; let field = ''; let quoted = false;
-  for (let index = 0; index < text.length; index += 1) {
-    const character = text[index];
-    if (character === '"') {
-      if (quoted && text[index + 1] === '"') { field += '"'; index += 1; } else quoted = !quoted;
-    } else if (character === ',' && !quoted) { row.push(field); field = ''; }
-    else if ((character === '\n' || character === '\r') && !quoted) {
-      if (character === '\r' && text[index + 1] === '\n') index += 1;
-      row.push(field); if (row.some((value) => value !== '')) rows.push(row); row = []; field = '';
-    } else field += character;
-  }
-  if (field || row.length) { row.push(field); rows.push(row); }
-  if (quoted) throw new Error('A selected CSV contains an unclosed quoted field.');
-  return rows;
-}
-function columnIndex(headers, aliases) {
-  const normalizedHeaders = headers.map(normalizedName);
-  return aliases.map((alias) => normalizedHeaders.indexOf(alias)).find((index) => index >= 0) ?? -1;
-}
-function sourceFromFileName(fileName) {
-  return fileName.replace(/\.csv$/i, '').replace(/(?:^|[_ -])(source|data|records?)(?:[_ -]|$)/gi, ' ').replace(/[_-]+/g, ' ').trim() || 'Uploaded source';
-}
-function recordsFromCsv(fileName, csvText) {
-  const [header, ...rows] = parseCsv(csvText);
-  if (!header || !header.length) throw new Error(`${fileName} does not contain a header row.`);
-  const headers = header.map((value) => value.trim());
-  if (new Set(headers.map(normalizedName)).size !== headers.length) throw new Error(`${fileName} has duplicate column names.`);
-  const sourceColumn = columnIndex(headers, sourceAliases);
-  const entityColumn = columnIndex(headers, entityAliases);
-  if (entityColumn < 0) throw new Error(`${fileName}: unable to identify an entity column. Include an ID, SKU, product code, name, or title column.`);
-  const labelColumn = columnIndex(headers, labelAliases);
-  return rows.map((values, index) => {
-    if (values.length !== headers.length) throw new Error(`${fileName}, row ${index + 2}: expected ${headers.length} columns.`);
-    const attributes = Object.fromEntries(headers.map((column, columnIndex) => [column, values[columnIndex].trim()]));
-    const entityId = values[entityColumn].trim();
-    if (!entityId) throw new Error(`${fileName}, row ${index + 2}: entity value is blank.`);
-    const sourceName = sourceColumn >= 0 && values[sourceColumn].trim() ? values[sourceColumn].trim() : sourceFromFileName(fileName);
-    delete attributes[headers[sourceColumn]];
-    delete attributes[headers[entityColumn]];
-    return { sourceName, entityId, productName: labelColumn >= 0 ? values[labelColumn].trim() || entityId : entityId, productTitle: labelColumn >= 0 ? values[labelColumn].trim() || entityId : entityId, attributes };
-  });
-}
-function median(values) {
-  const sorted = [...values].sort((left, right) => left - right);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
-}
-function numericValue(value) {
-  const cleaned = String(value).trim().replace(/[,$₹£€]/g, '').replace(/,/g, '');
-  return cleaned && /^-?\d+(\.\d+)?$/.test(cleaned) ? Number(cleaned) : null;
-}
-function canonicalValue(value) { return String(value).trim().toLocaleLowerCase().replace(/\s+/g, ' '); }
-function mode(values) {
-  const counts = new Map();
-  values.forEach((value) => counts.set(canonicalValue(value), (counts.get(canonicalValue(value)) || 0) + 1));
-  return [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0][0];
-}
-function referenceFor(values) {
-  const numeric = values.map(numericValue);
-  return numeric.every((value) => value !== null) ? { value: median(numeric), numeric: true } : { value: mode(values), numeric: false };
-}
-function consistency(value, reference, isNumeric) {
-  if (!isNumeric) return canonicalValue(value) === canonicalValue(reference) ? 1 : 0;
-  const number = numericValue(value);
-  return reference === 0 ? (number === 0 ? 1 : 0) : Math.max(0, 1 - Math.abs(number - reference) / Math.abs(reference));
-}
-function confirmation(value, reference, isNumeric) {
-  if (!isNumeric) return canonicalValue(value) === canonicalValue(reference) ? 1 : 0;
-  const number = numericValue(value);
-  const deviation = reference === 0 ? (number === 0 ? 0 : 1) : Math.abs(number - reference) / Math.abs(reference);
-  return deviation <= .02 ? 1 : Math.max(0, 1 - (deviation - .02) / .2);
-}
-function processInBrowser(records) {
-  state.mathSample = null;
-  const byEntity = new Map();
-  for (const record of records) {
-    const group = byEntity.get(Number(record.entityId)) || [];
-    group.push(record);
-    byEntity.set(record.entityId, group);
-  }
-  const totals = new Map();
-  for (const group of byEntity.values()) {
-    const attributes = new Set(group.flatMap((record) => Object.keys(record.attributes)));
-    for (const attributeName of attributes) {
-      const observations = group.filter((record) => record.attributes[attributeName] !== '').map((record) => ({ record, value: record.attributes[attributeName] }));
-      if (observations.length < 2) continue;
-      const reference = referenceFor(observations.map((item) => item.value));
-      for (const { record, value } of observations) {
-        const total = totals.get(record.sourceName) || { total: 0, agreement: 0 };
-        total.total += 1; total.agreement += consistency(value, reference.value, reference.numeric); totals.set(record.sourceName, total);
-      }
-    }
-  }
-  const reliabilityBySource = new Map([...totals].map(([name, value]) => [name, value.agreement / value.total]));
-  const conflicts = []; const recommendations = []; const details = new Map(); let conflictId = 1; let recordId = 1;
-  for (const [entityId, group] of byEntity) {
-    const attributes = new Set(group.flatMap((record) => Object.keys(record.attributes)));
-    for (const attributeName of attributes) {
-      const observations = group.filter((record) => record.attributes[attributeName] !== '').map((record) => ({ record, value: record.attributes[attributeName] }));
-      if (observations.length < 2 || new Set(observations.map((item) => canonicalValue(item.value))).size < 2) continue;
-      const reference = referenceFor(observations.map((item) => item.value));
-      const scored = observations.map(({ record, value }) => {
-        const factors = { reliability: reliabilityBySource.get(record.sourceName) ?? 0, freshness: 1, verification: confirmation(value, reference.value, reference.numeric), consistency: consistency(value, reference.value, reference.numeric) };
-        const trustScore = Math.round(100 * (.4 * factors.reliability + .2 * factors.freshness + .2 * factors.verification + .2 * factors.consistency) * 100) / 100;
-        const scoredRecord = { ...record, recordId: recordId++, selectedValue: value, trustScore, factors };
-        scoredRecord.reason = `Source reliability: ${factors.reliability.toFixed(2)}, freshness: ${factors.freshness.toFixed(2)}, consensus confirmation: ${factors.verification.toFixed(2)}, consistency: ${factors.consistency.toFixed(2)}. Final trust score: ${trustScore.toFixed(2)}.`;
-        return scoredRecord;
-      }).sort((left, right) => right.trustScore - left.trustScore || left.recordId - right.recordId);
-      const winner = scored[0];
-      const recommendationReason = `Value "${winner.selectedValue}" from ${winner.sourceName} was selected because its trust score of ${winner.trustScore.toFixed(2)} is the highest for the ${displayName(attributeName)} conflict. ${winner.reason}`;
-      const conflict = { conflictId, entityId, productName: winner.productName, attributeName: displayName(attributeName), status: 'DETECTED', recordCount: scored.length };
-      const recommendation = { recommendationId: conflictId, conflictId, entityId, productName: winner.productName, attributeName: displayName(attributeName), sourceName: winner.sourceName, recordId: winner.recordId, selectedValue: winner.selectedValue, trustScore: winner.trustScore, reason: recommendationReason };
-      conflicts.push(conflict); recommendations.push(recommendation);
-      details.set(conflictId, { ...conflict, records: scored, recommendation: { recordId: winner.recordId, sourceName: winner.sourceName, selectedValue: winner.selectedValue, reason: recommendationReason } });
-      if (!state.mathSample) state.mathSample = { entityId, productName: winner.productName, attributeName: displayName(attributeName), reference, values: observations.map((item) => item.value), winner };
-      conflictId += 1;
-    }
-  }
-  state.conflicts = conflicts; state.recommendations = recommendations;
-  state.sources = [...totals].map(([sourceName, value]) => ({ sourceName, totalRecords: value.total, verifiedRecords: 0, correctRecords: 0, reliabilityScore: (reliabilityBySource.get(sourceName) || 0) * 100, lastUpdated: new Date().toISOString() }));
-  state.localDetails = details; state.uploadedRecords = records; render();
+function processInBrowser(records, parseWarnings = {}) {
+  const result = window.TrustyCsvEngine.processRecords(records);
+  state.conflicts = result.conflicts; state.recommendations = result.recommendations; state.sources = result.sources;
+  state.localDetails = result.details; state.mathSample = result.mathSample; state.uploadedRecords = result.records; render();
   byId('service-dot').className = 'status-dot is-ok'; byId('service-status').textContent = 'Local CSV mode';
   byId('analysis-status').textContent = 'Local'; byId('analysis-detail').textContent = 'CSV analysis in this browser';
-  return { totalRecords: records.length, sourceCount: state.sources.length, conflictsDetected: conflicts.length, recommendationsGenerated: recommendations.length };
+  return { totalRecords: result.records.length, sourceCount: result.sources.length, conflictsDetected: result.conflicts.length, recommendationsGenerated: result.recommendations.length, validation: { ...parseWarnings, ...result.validation } };
 }
 async function uploadSources(files) {
   if (files.length < 2) throw new Error('Select at least two source CSV files to compare.');
-  const fileRecords = await Promise.all([...files].map(async (file) => recordsFromCsv(file.name, await file.text())));
-  const records = fileRecords.flat();
+  const parsedFiles = await Promise.all([...files].map(async (file) => window.TrustyCsvEngine.parseCsvText(file.name, await file.text())));
+  const records = parsedFiles.flatMap((file) => file.records);
   const sourceNames = new Set(records.map((record) => record.sourceName.trim()));
-  if (sourceNames.size < 2) throw new Error('The selected files must contain at least two distinct source_name values.');
-  return processInBrowser(records);
+  if (sourceNames.size < 2) throw new Error('Unable to identify at least two distinct sources. Add a source/vendor column or use distinct filenames.');
+  const parseWarnings = parsedFiles.reduce((result, file) => Object.fromEntries(Object.keys(result).map((key) => [key, result[key] + file.warnings[key]])), { missingEntityIds: 0, invalidPrices: 0, sourceFallbacks: 0 });
+  return processInBrowser(records, parseWarnings);
 }
 
 byId('refresh-button').addEventListener('click', refresh);
@@ -235,7 +145,12 @@ byId('upload-input').addEventListener('change', async (event) => {
   const button = byId('upload-button'); button.disabled = true; button.textContent = 'Uploading…';
   try {
     const report = await uploadSources(input.files);
-    showMessage(`Upload processed locally: ${report.totalRecords} records from ${report.sourceCount} sources. ${report.conflictsDetected} conflicts and ${report.recommendationsGenerated} recommendations generated.`, 'success');
+    const notices = [];
+    if (report.validation.missingEntityIds) notices.push(`${report.validation.missingEntityIds} row(s) skipped: missing entity ID`);
+    if (report.validation.invalidPrices) notices.push(`${report.validation.invalidPrices} invalid price value(s) ignored for price conflicts`);
+    if (report.validation.duplicateRecords) notices.push(`${report.validation.duplicateRecords} duplicate row(s) skipped`);
+    if (report.validation.sourceFallbacks) notices.push(`${report.validation.sourceFallbacks} row(s) used a filename-derived source`);
+    showMessage(`Upload processed locally: ${report.totalRecords} records from ${report.sourceCount} sources. ${report.conflictsDetected} conflicts and ${report.recommendationsGenerated} recommendations generated.${notices.length ? ` Notice: ${notices.join('; ')}.` : ''}`, 'success');
   } catch (error) { showMessage(error.message, 'error'); }
   finally { input.value = ''; button.disabled = false; button.textContent = 'Upload source CSVs'; }
 });

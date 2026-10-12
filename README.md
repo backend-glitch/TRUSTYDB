@@ -127,6 +127,24 @@ PRICE values, calculates median-consensus reliability and trust scores, and
 shows a recommendation. Refreshing or closing the page clears the uploaded
 data. This mode does not insert, update, or delete anything in any database.
 
+## Deploy the CSV review console on Vercel
+
+This repository includes `vercel.json` for the browser-only review console.
+It deploys only `frontend/`: no Oracle credentials, Node server, uploaded CSV,
+or database data is sent to Vercel. CSV analysis continues to run entirely in
+the visitor's browser.
+
+1. Push this repository to GitHub and import it into Vercel.
+2. Keep the repository root as the Vercel Root Directory.
+3. Vercel reads `vercel.json`; no environment variables, install step, or
+   build command are required for this static deployment.
+4. Deploy, then open the Vercel URL and select two or more CSV files.
+
+The Oracle-backed API is deliberately not deployed to Vercel. If you need the
+database API as well, deploy the Node service separately (for example, with
+the included Render configuration) and keep Oracle credentials only in that
+service's secret environment variables.
+
 ## Run with Docker
 
 The Docker image contains the API and the three corrected CSV files. It uses
