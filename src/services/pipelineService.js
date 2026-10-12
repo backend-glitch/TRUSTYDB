@@ -17,7 +17,7 @@ function groupByEntity(records) {
   return groups;
 }
 
-export async function runPipeline(connection) {
+export async function runPipeline(connection, uploadedInput = null) {
   try {
     const schemaCreated = await ensureTrustySchema(connection);
     let csvRecords = [];
@@ -26,7 +26,13 @@ export async function runPipeline(connection) {
     let entitiesFound;
     let entitiesInserted = 0;
     let importResult = { inserted: 0, skipped: 0 };
-    if (config.inputMode === 'database') {
+    if (uploadedInput) {
+      ({ records: csvRecords, counts } = uploadedInput);
+      sourceMap = await db.ensureSourceMap(connection, [...counts.keys()]);
+      entitiesInserted = await db.ensureEntities(connection, csvRecords);
+      importResult = await db.importRecords(connection, csvRecords, sourceMap);
+      entitiesFound = new Set(csvRecords.map((record) => record.entityId)).size;
+    } else if (config.inputMode === 'database') {
       const existing = await db.fetchExistingInputSummary(connection);
       sourceMap = existing.sourceMap;
       counts = existing.counts;
@@ -74,7 +80,7 @@ export async function runPipeline(connection) {
     }
     await connection.commit();
     return {
-      inputMode: config.inputMode, schemaCreated, csvCounts: Object.fromEntries(counts), totalCsvRecords: csvRecords.length, entitiesInserted, importResult,
+      inputMode: uploadedInput ? 'upload' : config.inputMode, schemaCreated, csvCounts: Object.fromEntries(counts), totalCsvRecords: csvRecords.length, entitiesInserted, importResult,
       entitiesFound, conflictsDetected: conflicts.size,
       conflictsCreated, recommendationsGenerated: conflicts.size, sourceReliability: Object.fromEntries(sourceReliability), sample
     };

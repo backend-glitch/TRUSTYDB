@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { closePool, getConnection } from './config/database.js';
 import { config } from './config/env.js';
 import { runPipeline } from './services/pipelineService.js';
+import { normalizeUploadedRecords } from './services/csvService.js';
 import * as db from './services/databaseService.js';
 
 const frontendDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../frontend');
@@ -47,6 +48,16 @@ async function serveFrontend(request, response, pathname) {
   }
 }
 
+async function readJsonBody(request) {
+  let body = '';
+  for await (const chunk of request) {
+    body += chunk;
+    if (Buffer.byteLength(body) > 50 * 1024 * 1024) throw new Error('Upload is too large for the browser endpoint. Use TRUSTYDB_SOURCE_FILES with npm run process for very large datasets.');
+  }
+  try { return JSON.parse(body); }
+  catch { throw new Error('Upload could not be read. Please select valid CSV files and try again.'); }
+}
+
 let processing = false;
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
@@ -75,6 +86,16 @@ const server = http.createServer(async (request, response) => {
       ownsProcessingLock = true;
       connection = await getConnection();
       const report = await runPipeline(connection);
+      return send(response, 200, report);
+    }
+    if (request.method === 'POST' && url.pathname === '/api/process/upload') {
+      if (processing) return send(response, 409, { error: 'A processing run is already active.' });
+      processing = true;
+      ownsProcessingLock = true;
+      const payload = await readJsonBody(request);
+      const uploadedInput = normalizeUploadedRecords(payload.records);
+      connection = await getConnection();
+      const report = await runPipeline(connection, uploadedInput);
       return send(response, 200, report);
     }
     if (await serveFrontend(request, response, url.pathname)) return;

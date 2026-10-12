@@ -50,6 +50,23 @@ function validateRow(row, fileName, rowNumber) {
   return { sourceName: row.source_name.trim(), entityId, productName: row.product_name.trim(), productTitle: row.product_title.trim(), category: row.category.trim(), price, stock };
 }
 
+export function normalizeUploadedRecords(records) {
+  if (!Array.isArray(records) || !records.length) throw new Error('Upload at least one non-empty CSV file.');
+  const normalized = records.map((record, index) => validateRow({
+    source_name: record.sourceName,
+    entity_id: record.entityId,
+    product_name: record.productName,
+    product_title: record.productTitle,
+    category: record.category,
+    price: record.price,
+    stock: record.stock
+  }, 'uploaded data', index + 1));
+  const counts = new Map();
+  for (const record of normalized) counts.set(record.sourceName, (counts.get(record.sourceName) || 0) + 1);
+  if (counts.size < 2) throw new Error('Upload data must contain at least two distinct source_name values.');
+  return { records: normalized, counts };
+}
+
 async function discoverFiles() {
   if (config.sourceFiles) {
     const requestedFiles = config.sourceFiles.split(',').map((file) => file.trim()).filter(Boolean);

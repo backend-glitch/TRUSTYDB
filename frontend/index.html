@@ -33,7 +33,11 @@
             <h1>Trust decisions, with their evidence.</h1>
             <p class="lede">Review detected price conflicts and the records selected by the current trust model.</p>
           </div>
-          <button class="button button-primary" id="process-button" type="button">Run processing</button>
+          <div class="topbar-actions">
+            <button class="button button-quiet" id="upload-button" type="button">Upload source CSVs</button>
+            <button class="button button-primary" id="process-button" type="button">Run processing</button>
+            <input class="visually-hidden" id="upload-input" type="file" accept=".csv,text/csv" multiple />
+          </div>
         </header>
 
         <div class="alert" id="app-message" role="status" hidden></div>
@@ -49,6 +53,7 @@
             <div><dt>Sources assessed</dt><dd id="source-count">—</dd><small>With current reliability history</small></div>
             <div><dt>Database status</dt><dd id="database-status">—</dd><small id="database-detail">Checking connection</small></div>
           </dl>
+          <p class="upload-hint"><strong>New data?</strong> Upload all conflicting-source CSV files together. TRUSTYDB imports them into this user's configured local Oracle database, then detects and resolves PRICE conflicts. Required columns: <code>source_name, entity_id, product_name, product_title, category, price, stock</code>.</p>
         </section>
 
         <section id="conflicts" class="data-section" aria-labelledby="conflicts-title">

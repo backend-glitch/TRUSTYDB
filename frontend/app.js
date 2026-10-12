@@ -71,6 +71,41 @@ async function openConflict(conflictId) {
 }
 function closeDetail() { byId('detail-panel').classList.remove('is-open'); byId('detail-panel').setAttribute('aria-hidden', 'true'); byId('scrim').hidden = true; }
 
+const requiredColumns = ['source_name', 'entity_id', 'product_name', 'product_title', 'category', 'price', 'stock'];
+function parseCsv(text) {
+  const rows = []; let row = []; let field = ''; let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (character === '"') {
+      if (quoted && text[index + 1] === '"') { field += '"'; index += 1; } else quoted = !quoted;
+    } else if (character === ',' && !quoted) { row.push(field); field = ''; }
+    else if ((character === '\n' || character === '\r') && !quoted) {
+      if (character === '\r' && text[index + 1] === '\n') index += 1;
+      row.push(field); if (row.some((value) => value !== '')) rows.push(row); row = []; field = '';
+    } else field += character;
+  }
+  if (field || row.length) { row.push(field); rows.push(row); }
+  if (quoted) throw new Error('A selected CSV contains an unclosed quoted field.');
+  return rows;
+}
+function recordsFromCsv(fileName, csvText) {
+  const [header, ...rows] = parseCsv(csvText);
+  if (!header || header.join(',') !== requiredColumns.join(',')) throw new Error(`${fileName} must use columns: ${requiredColumns.join(', ')}`);
+  return rows.map((values, index) => {
+    if (values.length !== requiredColumns.length) throw new Error(`${fileName}, row ${index + 2}: expected ${requiredColumns.length} columns.`);
+    const row = Object.fromEntries(requiredColumns.map((column, columnIndex) => [column, values[columnIndex]]));
+    return { sourceName: row.source_name, entityId: row.entity_id, productName: row.product_name, productTitle: row.product_title, category: row.category, price: row.price, stock: row.stock };
+  });
+}
+async function uploadSources(files) {
+  if (files.length < 2) throw new Error('Select at least two source CSV files to compare.');
+  const fileRecords = await Promise.all([...files].map(async (file) => recordsFromCsv(file.name, await file.text())));
+  const records = fileRecords.flat();
+  const sourceNames = new Set(records.map((record) => record.sourceName.trim()));
+  if (sourceNames.size < 2) throw new Error('The selected files must contain at least two distinct source_name values.');
+  return request('/api/process/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ records }) });
+}
+
 byId('refresh-button').addEventListener('click', () => refresh().catch((error) => showMessage(error.message, 'error')));
 byId('process-button').addEventListener('click', async () => {
   if (!window.confirm('Run the import, conflict detection, trust evaluation, and recommendation pipeline now?')) return;
@@ -78,6 +113,18 @@ byId('process-button').addEventListener('click', async () => {
   try { const report = await request('/api/process', { method: 'POST' }); showMessage(`Processing complete: ${report.conflictsDetected} conflicts and ${report.recommendationsGenerated} recommendations evaluated.`, 'success'); await refresh(); }
   catch (error) { showMessage(error.message, 'error'); }
   finally { button.disabled = false; button.textContent = 'Run processing'; }
+});
+byId('upload-button').addEventListener('click', () => byId('upload-input').click());
+byId('upload-input').addEventListener('change', async (event) => {
+  const input = event.currentTarget;
+  if (!input.files.length) return;
+  const button = byId('upload-button'); button.disabled = true; button.textContent = 'Uploading…';
+  try {
+    const report = await uploadSources(input.files);
+    showMessage(`Upload processed: ${report.totalCsvRecords} records from ${Object.keys(report.csvCounts).length} sources. ${report.conflictsDetected} conflicts and ${report.recommendationsGenerated} recommendations generated.`, 'success');
+    await refresh();
+  } catch (error) { showMessage(error.message, 'error'); }
+  finally { input.value = ''; button.disabled = false; button.textContent = 'Upload source CSVs'; }
 });
 document.addEventListener('click', (event) => { const button = event.target.closest('[data-conflict]'); if (button) openConflict(button.dataset.conflict); });
 byId('close-detail').addEventListener('click', closeDetail); byId('scrim').addEventListener('click', closeDetail);

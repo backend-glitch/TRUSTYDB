@@ -103,6 +103,7 @@ Start the backend API with `npm start`.
 | GET | `/api/health` | Health check without a database connection |
 | GET | `/api/health/database` | Verifies the configured Oracle connection |
 | POST | `/api/process` | Runs the same import-and-trust pipeline as the CLI |
+| POST | `/api/process/upload` | Imports browser-uploaded source CSV rows and runs the pipeline |
 | GET | `/api/conflicts` | Lists PRICE conflicts |
 | GET | `/api/conflicts/:id` | Conflict records, scores, and recommendation |
 | GET | `/api/recommendations` | Lists selected records |
@@ -110,6 +111,12 @@ Start the backend API with `npm start`.
 | GET | `/api/sources/:id/history` | Latest history for a source |
 
 For example: `curl http://localhost:3000/api/health`.
+
+The review console at `/` includes **Upload source CSVs**. Select two or more
+CSV files with the documented header; the files are parsed in the browser,
+sent to the user’s own locally configured backend, imported into their Oracle
+database, and processed immediately. Oracle credentials are never uploaded
+through the UI.
 
 ## Run with Docker
 
