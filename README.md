@@ -130,7 +130,8 @@ data. This mode does not insert, update, or delete anything in any database.
 ## Deploy the CSV review console on Vercel
 
 This repository includes `vercel.json` for the browser-only review console.
-It deploys only `frontend/`: no Oracle credentials, Node server, uploaded CSV,
+Its Vercel build creates a static `dist/` copy of `frontend/` and deploys only
+that output: no Oracle credentials, Node server, uploaded CSV,
 or database data is sent to Vercel. CSV analysis continues to run entirely in
 the visitor's browser.
 

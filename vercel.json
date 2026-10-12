@@ -1,7 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "other",
   "installCommand": "echo 'Static browser deployment: no server dependencies required'",
-  "buildCommand": "echo 'Static browser deployment: no build step required'",
-  "outputDirectory": "frontend",
+  "buildCommand": "node scripts/build-vercel-static.mjs",
+  "outputDirectory": "dist",
   "cleanUrls": true
 }
