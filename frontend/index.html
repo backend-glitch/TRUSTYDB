@@ -35,7 +35,7 @@
           </div>
           <div class="topbar-actions">
             <button class="button button-quiet" id="upload-button" type="button">Upload source CSVs</button>
-            <button class="button button-primary" id="process-button" type="button">Run processing</button>
+            <button class="button button-primary" id="process-button" type="button">Resolve uploaded data</button>
             <input class="visually-hidden" id="upload-input" type="file" accept=".csv,text/csv" multiple />
           </div>
         </header>
@@ -53,7 +53,7 @@
             <div><dt>Sources assessed</dt><dd id="source-count">—</dd><small>With current reliability history</small></div>
             <div><dt>Database status</dt><dd id="database-status">—</dd><small id="database-detail">Checking connection</small></div>
           </dl>
-          <p class="upload-hint"><strong>New data?</strong> Upload all conflicting-source CSV files together. TRUSTYDB imports them into this user's configured local Oracle database, then detects and resolves PRICE conflicts. Required columns: <code>source_name, entity_id, product_name, product_title, category, price, stock</code>.</p>
+          <p class="upload-hint"><strong>New data?</strong> Upload all conflicting-source CSV files together. TRUSTYDB reads them only in this browser, detects PRICE conflicts, and recommends the highest-trust value. Nothing is stored in Oracle or SQL*Plus. Required columns: <code>source_name, entity_id, product_name, product_title, category, price, stock</code>.</p>
         </section>
 
         <section id="conflicts" class="data-section" aria-labelledby="conflicts-title">

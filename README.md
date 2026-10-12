@@ -118,6 +118,15 @@ sent to the user’s own locally configured backend, imported into their Oracle
 database, and processed immediately. Oracle credentials are never uploaded
 through the UI.
 
+## Browser-only CSV review
+
+When opening `frontend/index.html` directly, **Upload source CSVs** works
+without Node.js, Oracle, or SQL*Plus. The selected CSV files stay in the
+browser: TRUSTYDB groups rows by `entity_id`, detects entities with different
+PRICE values, calculates median-consensus reliability and trust scores, and
+shows a recommendation. Refreshing or closing the page clears the uploaded
+data. This mode does not insert, update, or delete anything in any database.
+
 ## Run with Docker
 
 The Docker image contains the API and the three corrected CSV files. It uses

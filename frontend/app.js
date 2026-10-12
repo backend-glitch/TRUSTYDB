@@ -1,5 +1,5 @@
 const byId = (id) => document.getElementById(id);
-const state = { conflicts: [], recommendations: [], sources: [] };
+const state = { conflicts: [], recommendations: [], sources: [], localDetails: new Map(), uploadedRecords: [] };
 // Relative API calls work when served by Node/Render. The localhost fallback lets
 // the visual review console work when index.html is opened directly from Finder.
 const apiBase = window.location.protocol === 'file:' ? 'http://localhost:3000/api' : '/api';
@@ -26,7 +26,7 @@ function showMessage(message, kind = '') {
 }
 function clearMessage() { byId('app-message').hidden = true; }
 function renderRows(target, rows, renderer, colspan) {
-  byId(target).innerHTML = rows.length ? rows.map(renderer).join('') : `<tr><td class="empty-row" colspan="${colspan}">No data is available yet. Run processing after Oracle is configured.</td></tr>`;
+  byId(target).innerHTML = rows.length ? rows.map(renderer).join('') : `<tr><td class="empty-row" colspan="${colspan}">No data yet. Upload two or more source CSV files to begin conflict review.</td></tr>`;
 }
 
 function render() {
@@ -40,6 +40,14 @@ function render() {
 }
 
 async function refresh() {
+  if (window.location.protocol === 'file:') {
+    byId('service-dot').className = 'status-dot is-ok';
+    byId('service-status').textContent = 'Local CSV mode';
+    byId('database-status').textContent = 'Not used';
+    byId('database-detail').textContent = 'Nothing stored in Oracle';
+    render();
+    return;
+  }
   clearMessage();
   const [health, database, conflicts, recommendations, sources] = await Promise.allSettled([
     request('/api/health'), request('/api/health/database'), request('/api/conflicts'), request('/api/recommendations'), request('/api/sources')
@@ -59,7 +67,7 @@ async function refresh() {
 
 async function openConflict(conflictId) {
   try {
-    const detail = await request(`/api/conflicts/${conflictId}`);
+    const detail = state.localDetails.get(Number(conflictId)) || await request(`/api/conflicts/${conflictId}`);
     const recommendedId = detail.recommendation?.recordId;
     byId('detail-title').textContent = detail.productName;
     byId('detail-content').innerHTML = `<p class="detail-meta">Entity ${escapeHtml(detail.entityId)} · ${escapeHtml(detail.attributeName)} conflict · ${escapeHtml(detail.category)}</p><div class="evidence">${detail.records.map((record) => `<div class="evidence-row"><div><strong>${escapeHtml(record.sourceName)}</strong><small>${escapeHtml(record.productTitle)}</small></div><div><small>Reported price</small><strong>${currency(record.PRICE ?? record.price)}</strong></div><div><small>Trust score</small><strong>${score(record.trustScore)}${Number(record.recordId) === Number(recommendedId) ? ' · Selected' : ''}</strong></div></div>`).join('')}</div>${detail.recommendation ? `<div class="reason"><strong>Why this record was selected</strong><br>${escapeHtml(detail.recommendation.reason)}</div>` : ''}`;
@@ -97,22 +105,72 @@ function recordsFromCsv(fileName, csvText) {
     return { sourceName: row.source_name, entityId: row.entity_id, productName: row.product_name, productTitle: row.product_title, category: row.category, price: row.price, stock: row.stock };
   });
 }
+function median(values) {
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+function consistency(value, reference) { return reference === 0 ? (value === 0 ? 1 : 0) : Math.max(0, 1 - Math.abs(value - reference) / Math.abs(reference)); }
+function confirmation(value, reference) {
+  const deviation = reference === 0 ? (value === 0 ? 0 : 1) : Math.abs(value - reference) / Math.abs(reference);
+  return deviation <= .02 ? 1 : Math.max(0, 1 - (deviation - .02) / .2);
+}
+function processInBrowser(records) {
+  const byEntity = new Map();
+  for (const record of records) {
+    const group = byEntity.get(Number(record.entityId)) || [];
+    group.push({ ...record, entityId: Number(record.entityId), price: Number(record.price), stock: Number(record.stock) });
+    byEntity.set(Number(record.entityId), group);
+  }
+  const totals = new Map();
+  for (const group of byEntity.values()) {
+    const reference = median(group.map((record) => record.price));
+    for (const record of group) {
+      const value = totals.get(record.sourceName) || { total: 0, agreement: 0 };
+      value.total += 1; value.agreement += consistency(record.price, reference); totals.set(record.sourceName, value);
+    }
+  }
+  const reliabilityBySource = new Map([...totals].map(([name, value]) => [name, value.agreement / value.total]));
+  const conflicts = []; const recommendations = []; const details = new Map(); let conflictId = 1; let recordId = 1;
+  for (const [entityId, group] of byEntity) {
+    if (new Set(group.map((record) => record.price)).size < 2) continue;
+    const reference = median(group.map((record) => record.price));
+    const scored = group.map((record) => {
+      const factors = { reliability: reliabilityBySource.get(record.sourceName) || 0, freshness: 1, verification: confirmation(record.price, reference), consistency: consistency(record.price, reference) };
+      const trustScore = Math.round(100 * (.4 * factors.reliability + .2 * factors.freshness + .2 * factors.verification + .2 * factors.consistency) * 100) / 100;
+      const scoredRecord = { ...record, recordId: recordId++, trustScore, factors };
+      scoredRecord.reason = `Source reliability: ${factors.reliability.toFixed(2)}, freshness: ${factors.freshness.toFixed(2)}, consensus confirmation: ${factors.verification.toFixed(2)}, consistency: ${factors.consistency.toFixed(2)}. Final trust score: ${trustScore.toFixed(2)}.`;
+      return scoredRecord;
+    }).sort((left, right) => right.trustScore - left.trustScore || left.recordId - right.recordId);
+    const winner = scored[0];
+    const recommendationReason = `Record ${winner.recordId} selected because its trust score of ${winner.trustScore.toFixed(2)} is the highest for this PRICE conflict. ${winner.reason}`;
+    const conflict = { conflictId, entityId, productName: winner.productName, category: winner.category, attributeName: 'PRICE', status: 'DETECTED', recordCount: scored.length };
+    const recommendation = { recommendationId: conflictId, conflictId, entityId, productName: winner.productName, sourceName: winner.sourceName, recordId: winner.recordId, price: winner.price, trustScore: winner.trustScore, reason: recommendationReason };
+    conflicts.push(conflict); recommendations.push(recommendation);
+    details.set(conflictId, { ...conflict, records: scored, recommendation: { recordId: winner.recordId, sourceName: winner.sourceName, price: winner.price, reason: recommendationReason } });
+    conflictId += 1;
+  }
+  state.conflicts = conflicts; state.recommendations = recommendations;
+  state.sources = [...totals].map(([sourceName, value]) => ({ sourceName, totalRecords: value.total, verifiedRecords: 0, correctRecords: 0, reliabilityScore: (reliabilityBySource.get(sourceName) || 0) * 100, lastUpdated: new Date().toISOString() }));
+  state.localDetails = details; state.uploadedRecords = records; render();
+  byId('service-dot').className = 'status-dot is-ok'; byId('service-status').textContent = 'Local CSV mode';
+  byId('database-status').textContent = 'Not used'; byId('database-detail').textContent = 'No SQL storage';
+  return { totalRecords: records.length, sourceCount: state.sources.length, conflictsDetected: conflicts.length, recommendationsGenerated: recommendations.length };
+}
 async function uploadSources(files) {
   if (files.length < 2) throw new Error('Select at least two source CSV files to compare.');
   const fileRecords = await Promise.all([...files].map(async (file) => recordsFromCsv(file.name, await file.text())));
   const records = fileRecords.flat();
   const sourceNames = new Set(records.map((record) => record.sourceName.trim()));
   if (sourceNames.size < 2) throw new Error('The selected files must contain at least two distinct source_name values.');
-  return request('/api/process/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ records }) });
+  return processInBrowser(records);
 }
 
 byId('refresh-button').addEventListener('click', () => refresh().catch((error) => showMessage(error.message, 'error')));
 byId('process-button').addEventListener('click', async () => {
-  if (!window.confirm('Run the import, conflict detection, trust evaluation, and recommendation pipeline now?')) return;
-  const button = byId('process-button'); button.disabled = true; button.textContent = 'Processing…';
-  try { const report = await request('/api/process', { method: 'POST' }); showMessage(`Processing complete: ${report.conflictsDetected} conflicts and ${report.recommendationsGenerated} recommendations evaluated.`, 'success'); await refresh(); }
-  catch (error) { showMessage(error.message, 'error'); }
-  finally { button.disabled = false; button.textContent = 'Run processing'; }
+  if (!state.uploadedRecords.length) { byId('upload-input').click(); return; }
+  const report = processInBrowser(state.uploadedRecords);
+  showMessage(`Processing complete: ${report.conflictsDetected} conflicts and ${report.recommendationsGenerated} recommendations generated locally.`, 'success');
 });
 byId('upload-button').addEventListener('click', () => byId('upload-input').click());
 byId('upload-input').addEventListener('change', async (event) => {
@@ -121,8 +179,7 @@ byId('upload-input').addEventListener('change', async (event) => {
   const button = byId('upload-button'); button.disabled = true; button.textContent = 'Uploading…';
   try {
     const report = await uploadSources(input.files);
-    showMessage(`Upload processed: ${report.totalCsvRecords} records from ${Object.keys(report.csvCounts).length} sources. ${report.conflictsDetected} conflicts and ${report.recommendationsGenerated} recommendations generated.`, 'success');
-    await refresh();
+    showMessage(`Upload processed locally: ${report.totalRecords} records from ${report.sourceCount} sources. ${report.conflictsDetected} conflicts and ${report.recommendationsGenerated} recommendations generated.`, 'success');
   } catch (error) { showMessage(error.message, 'error'); }
   finally { input.value = ''; button.disabled = false; button.textContent = 'Upload source CSVs'; }
 });
