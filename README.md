@@ -4,15 +4,20 @@ This is the Node.js + Oracle implementation for Review 2. It includes a function
 
 ## Prerequisites and setup
 
-Use Node.js 20 or later and an Oracle Database reachable through SQL*Plus. The database must already contain the tables named in the project brief (`SOURCES`, `ENTITIES`, `RECORDS`, `CONFLICTS`, `TRUST_SCORES`, `RECOMMENDATIONS`, `SOURCE_HISTORY`) and the three `SOURCE_A`/`SOURCE_B`/`SOURCE_C` rows.
+Use Node.js 20 or later and any Oracle Database account reachable through SQL*Plus. The user supplies their own credentials in `.env`; they are never entered in or stored by the browser.
 
 ```bash
 cd "/Users/ayushsahu/Desktop/DBS Project/backend"
 cp .env.example .env
 # edit .env with the real Oracle password
 npm install
+# Creates only missing TRUSTYDB tables; existing tables are left unchanged.
+npm run setup
 npm run process
+npm start
 ```
+
+Open `http://localhost:3000/` for the review console. `npm run process` also runs the safe schema bootstrap automatically, so `npm run setup` is useful as an explicit first-run check but is not required.
 
 The official `oracledb` package uses Thin mode by default. If the local setup needs Oracle Thick mode, set `ORACLE_CLIENT_LIB_DIR` in `.env` to the Instant Client directory. Credentials never belong in source control; `.env` is intentionally not supplied.
 
@@ -22,11 +27,39 @@ Run the automated, database-free formula tests with:
 npm test
 ```
 
+## Use your own Oracle data
+
+TRUSTYDB is portable, but it needs a clear data contract rather than guessing the meaning of arbitrary database columns.
+
+### Option 1: import your own source CSV files
+
+Set `TRUSTYDB_INPUT_MODE=csv` (the default). Every source file must have these columns, in this order:
+
+```text
+source_name,entity_id,product_name,product_title,category,price,stock
+```
+
+Each file represents one source, but the source can have any name such as `MERCHANT_NORTH` or `SUPPLIER_PORTAL`. Configure either a directory or explicit comma-separated filenames:
+
+```env
+TRUSTYDB_DATA_DIR=/Users/me/my-product-sources
+# or
+TRUSTYDB_SOURCE_FILES=north.csv,south.csv,partner.csv
+```
+
+The processor discovers the source names, creates missing `SOURCES` rows, preserves every original record, detects PRICE conflicts, then writes its trust scores and recommendations. At least two sources are required.
+
+### Option 2: evaluate an existing TRUSTYDB database
+
+Set `TRUSTYDB_INPUT_MODE=database` when a user already has populated `SOURCES`, `ENTITIES`, and `RECORDS` tables using the TRUSTYDB schema. No CSV is read or inserted; the processor automatically examines the records already in Oracle and refreshes conflicts, scores, recommendations, and history.
+
+For a fresh Oracle account, the backend creates only the missing TRUSTYDB tables. It never drops tables, deletes original `RECORDS`, or alters existing columns. The Oracle account must have `CREATE TABLE` permission only if the tables do not exist yet.
+
 ## Processing pipeline
 
 `npm run process` uses one transaction. It validates the CSV header and values, then:
 
-1. Maps CSV source names to existing `SOURCES` IDs and ensures missing `ENTITIES` are inserted.
+1. Safely creates missing TRUSTYDB tables and maps detected source names to `SOURCES` IDs.
 2. Imports each record only when the same source, entity, title, price and stock combination is not already present.
 3. Detects a PRICE conflict whenever an entity has more than one distinct price and reuses its existing `CONFLICTS` row when present.
 4. Creates an unweighted median price for each conflicted entity as its consensus reference.
@@ -66,7 +99,9 @@ Start the backend API with `npm start`.
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
+| GET | `/` | Functional TRUSTYDB review console |
 | GET | `/api/health` | Health check without a database connection |
+| GET | `/api/health/database` | Verifies the configured Oracle connection |
 | POST | `/api/process` | Runs the same import-and-trust pipeline as the CLI |
 | GET | `/api/conflicts` | Lists PRICE conflicts |
 | GET | `/api/conflicts/:id` | Conflict records, scores, and recommendation |
@@ -102,12 +137,13 @@ Client installed in the container.
    curl http://localhost:3000/api/health
    ```
 
-The Oracle database is intentionally not included in Compose: this project
-expects the existing Oracle schema and source rows described above. Credentials
-remain in `backend/.env`, which is excluded from both Git and the Docker build
-context. View logs with `docker compose logs -f trustydb-api`; stop the API
-with `docker compose down`. To publish the image, tag it with your registry
-name after building, for example:
+The Oracle database is intentionally not included in Compose. On first process
+run, TRUSTYDB creates only missing tables; then it imports configured CSVs or
+evaluates existing TRUSTYDB records according to `TRUSTYDB_INPUT_MODE`.
+Credentials remain in `backend/.env`, which is excluded from both Git and the
+Docker build context. View logs with `docker compose logs -f trustydb-api`;
+stop the API with `docker compose down`. To publish the image, tag it with your
+registry name after building, for example:
 
 ```bash
 docker tag dbs-project-trustydb-api your-dockerhub-user/trustydb-api:latest

@@ -2,12 +2,14 @@ import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { config } from '../config/env.js';
 
 const REQUIRED_COLUMNS = ['source_name', 'entity_id', 'product_name', 'product_title', 'category', 'price', 'stock'];
 const serviceDirectory = path.dirname(fileURLToPath(import.meta.url));
 // Support both the current coursework layout (backend/ beside the CSV files) and
 // a normal repository clone with the backend files at repository root.
 const dataDirectories = [
+  ...(config.dataDirectory ? [path.resolve(config.dataDirectory)] : []),
   path.resolve(serviceDirectory, '../../..'),
   path.resolve(serviceDirectory, '../..')
 ];
@@ -48,14 +50,29 @@ function validateRow(row, fileName, rowNumber) {
   return { sourceName: row.source_name.trim(), entityId, productName: row.product_name.trim(), productTitle: row.product_title.trim(), category: row.category.trim(), price, stock };
 }
 
-export async function loadCorrectedCsvs() {
-  const names = ['A', 'B', 'C'];
-  const fileNames = names.map((name) => `TRUSTYDB_SOURCE_${name}_CORRECTED.csv`);
-  const dataDirectory = dataDirectories.find((directory) => fileNames.every((fileName) => existsSync(path.join(directory, fileName))));
-  if (!dataDirectory) {
-    throw new Error(`Required CSV files were not found. Looked in: ${dataDirectories.join(', ')}`);
+async function discoverFiles() {
+  if (config.sourceFiles) {
+    const requestedFiles = config.sourceFiles.split(',').map((file) => file.trim()).filter(Boolean);
+    if (requestedFiles.length < 2) throw new Error('TRUSTYDB_SOURCE_FILES must list at least two CSV files.');
+    return requestedFiles.map((file) => {
+      if (path.isAbsolute(file)) return file;
+      const found = dataDirectories.map((directory) => path.join(directory, file)).find(existsSync);
+      if (!found) throw new Error(`Configured source CSV was not found: ${file}`);
+      return found;
+    });
   }
-  const files = fileNames.map((fileName) => path.join(dataDirectory, fileName));
+  for (const directory of dataDirectories) {
+    if (!existsSync(directory)) continue;
+    const files = (await fs.readdir(directory))
+      .filter((file) => /^TRUSTYDB_SOURCE_.*\.csv$/i.test(file))
+      .map((file) => path.join(directory, file));
+    if (files.length >= 2) return files.sort();
+  }
+  throw new Error(`No source CSV files were found. Set TRUSTYDB_DATA_DIR or TRUSTYDB_SOURCE_FILES. Looked in: ${dataDirectories.join(', ')}`);
+}
+
+export async function loadSourceCsvs() {
+  const files = await discoverFiles();
   const allRecords = [];
   const counts = new Map();
   for (const file of files) {
@@ -71,10 +88,16 @@ export async function loadCorrectedCsvs() {
       if (values.length !== REQUIRED_COLUMNS.length) throw new Error(`${fileName}, row ${index + 2}: expected ${REQUIRED_COLUMNS.length} columns.`);
       return validateRow(Object.fromEntries(REQUIRED_COLUMNS.map((column, columnIndex) => [column, values[columnIndex]])), fileName, index + 2);
     });
-    const expectedSource = `SOURCE_${path.basename(file).match(/SOURCE_([ABC])/)?.[1]}`;
-    if (records.some((record) => record.sourceName !== expectedSource)) throw new Error(`${fileName}: source_name must be ${expectedSource}.`);
-    counts.set(records[0]?.sourceName || expectedSource, records.length);
+    const sourceNames = new Set(records.map((record) => record.sourceName));
+    if (!sourceNames.size) throw new Error(`${fileName}: the file contains no data rows.`);
+    if (sourceNames.size !== 1) throw new Error(`${fileName}: each CSV file must contain exactly one source_name.`);
+    const sourceName = [...sourceNames][0];
+    counts.set(sourceName, (counts.get(sourceName) || 0) + records.length);
     allRecords.push(...records);
   }
+  if (counts.size < 2) throw new Error('At least two distinct sources are required to detect conflicts.');
   return { records: allRecords, counts };
 }
+
+// Kept as a compatibility alias for existing callers.
+export const loadCorrectedCsvs = loadSourceCsvs;

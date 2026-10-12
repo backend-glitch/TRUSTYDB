@@ -6,12 +6,17 @@ function divider(title = '') { console.log(`\n${'='.repeat(58)}${title ? `\n${ti
 let connection;
 try {
   divider('TRUSTYDB BACKEND');
-  console.log('Loading and validating corrected CSV sources...');
+  console.log('Connecting to Oracle and preparing TRUSTYDB...');
   connection = await getConnection();
   const report = await runPipeline(connection);
   for (const [source, count] of Object.entries(report.csvCounts)) console.log(`✓ ${source}: ${count} records`);
-  console.log(`\nTotal CSV records processed: ${report.totalCsvRecords}`);
-  console.log(`New records inserted: ${report.importResult.inserted}; duplicate imports skipped: ${report.importResult.skipped}`);
+  if (report.inputMode === 'csv') {
+    console.log(`\nTotal CSV records processed: ${report.totalCsvRecords}`);
+    console.log(`New records inserted: ${report.importResult.inserted}; duplicate imports skipped: ${report.importResult.skipped}`);
+  } else {
+    console.log('\nUsing existing TRUSTYDB records from Oracle (database input mode).');
+  }
+  if (report.schemaCreated.length) console.log(`Schema bootstrap created: ${report.schemaCreated.join(', ')}`);
   console.log(`Entities found: ${report.entitiesFound}`);
   console.log(`\nConflict Detection\n------------------\nConflicts detected: ${report.conflictsDetected} (${report.conflictsCreated} new)`);
   console.log('\nTrust Evaluation\n----------------');

@@ -3,8 +3,9 @@ import { bootstrapReliability } from '../algorithms/reliability.js';
 import { median, consistency, consensusVerification } from '../algorithms/consensus.js';
 import { freshnessFromTimestamp } from '../algorithms/freshness.js';
 import { calculateTrustScore, scoreReason } from '../algorithms/trustScore.js';
-import { loadCorrectedCsvs } from './csvService.js';
+import { loadSourceCsvs } from './csvService.js';
 import * as db from './databaseService.js';
+import { ensureTrustySchema } from './schemaService.js';
 
 function groupByEntity(records) {
   const groups = new Map();
@@ -17,11 +18,26 @@ function groupByEntity(records) {
 }
 
 export async function runPipeline(connection) {
-  const { records: csvRecords, counts } = await loadCorrectedCsvs();
   try {
-    const sourceMap = await db.getSourceMap(connection, [...counts.keys()]);
-    const entitiesInserted = await db.ensureEntities(connection, csvRecords);
-    const importResult = await db.importRecords(connection, csvRecords, sourceMap);
+    const schemaCreated = await ensureTrustySchema(connection);
+    let csvRecords = [];
+    let counts = new Map();
+    let sourceMap;
+    let entitiesFound;
+    let entitiesInserted = 0;
+    let importResult = { inserted: 0, skipped: 0 };
+    if (config.inputMode === 'database') {
+      const existing = await db.fetchExistingInputSummary(connection);
+      sourceMap = existing.sourceMap;
+      counts = existing.counts;
+      entitiesFound = existing.entitiesFound;
+    } else {
+      ({ records: csvRecords, counts } = await loadSourceCsvs());
+      sourceMap = await db.ensureSourceMap(connection, [...counts.keys()]);
+      entitiesInserted = await db.ensureEntities(connection, csvRecords);
+      importResult = await db.importRecords(connection, csvRecords, sourceMap);
+      entitiesFound = new Set(csvRecords.map((record) => record.entityId)).size;
+    }
     const conflictRecords = await db.fetchPriceConflicts(connection);
     const conflicts = groupByEntity(conflictRecords);
     const reliability = bootstrapReliability(conflictRecords);
@@ -58,8 +74,8 @@ export async function runPipeline(connection) {
     }
     await connection.commit();
     return {
-      csvCounts: Object.fromEntries(counts), totalCsvRecords: csvRecords.length, entitiesInserted, importResult,
-      entitiesFound: new Set(csvRecords.map((record) => record.entityId)).size, conflictsDetected: conflicts.size,
+      inputMode: config.inputMode, schemaCreated, csvCounts: Object.fromEntries(counts), totalCsvRecords: csvRecords.length, entitiesInserted, importResult,
+      entitiesFound, conflictsDetected: conflicts.size,
       conflictsCreated, recommendationsGenerated: conflicts.size, sourceReliability: Object.fromEntries(sourceReliability), sample
     };
   } catch (error) {

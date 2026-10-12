@@ -2,7 +2,7 @@ import oracledb from 'oracledb';
 
 const OUT_FORMAT = { outFormat: oracledb.OUT_FORMAT_OBJECT };
 
-export async function getSourceMap(connection, sourceNames) {
+export async function ensureSourceMap(connection, sourceNames) {
   const result = await connection.execute(
     `SELECT source_id AS "sourceId", source_name AS "sourceName"
        FROM sources
@@ -12,8 +12,32 @@ export async function getSourceMap(connection, sourceNames) {
   );
   const sourceMap = new Map(result.rows.map((row) => [row.sourceName, row.sourceId]));
   const missing = sourceNames.filter((name) => !sourceMap.has(name));
-  if (missing.length) throw new Error(`Missing required SOURCES rows: ${missing.join(', ')}. Create them in Oracle before processing.`);
+  if (missing.length) {
+    const maximum = await connection.execute('SELECT NVL(MAX(source_id), 0) AS "maxId" FROM sources', {}, OUT_FORMAT);
+    let nextId = Number(maximum.rows[0].maxId);
+    for (const sourceName of missing) {
+      nextId += 1;
+      await connection.execute(
+        'INSERT INTO sources (source_id, source_name) VALUES (:sourceId, :sourceName)',
+        { sourceId: nextId, sourceName }
+      );
+      sourceMap.set(sourceName, nextId);
+    }
+  }
   return sourceMap;
+}
+
+export async function fetchExistingInputSummary(connection) {
+  const [sources, counts, entities] = await Promise.all([
+    connection.execute('SELECT source_id AS "sourceId", source_name AS "sourceName" FROM sources ORDER BY source_id', {}, OUT_FORMAT),
+    connection.execute(`SELECT s.source_name AS "sourceName", COUNT(r.record_id) AS "recordCount"
+      FROM sources s JOIN records r ON r.source_id = s.source_id GROUP BY s.source_name`, {}, OUT_FORMAT),
+    connection.execute('SELECT COUNT(DISTINCT entity_id) AS "entityCount" FROM records', {}, OUT_FORMAT)
+  ]);
+  const sourceMap = new Map(sources.rows.map((row) => [row.sourceName, row.sourceId]));
+  const sourceCounts = new Map(counts.rows.map((row) => [row.sourceName, Number(row.recordCount)]));
+  if (sourceMap.size < 2) throw new Error('Database mode requires at least two sources in SOURCES.');
+  return { sourceMap, counts: sourceCounts, entitiesFound: Number(entities.rows[0].entityCount) };
 }
 
 export async function ensureEntities(connection, records) {

@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "process": "node src/process.js",
+    "setup": "node src/setup.js",
     "start": "node src/server.js",
     "test": "node --test"
   },
