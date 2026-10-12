@@ -1,6 +1,6 @@
 # TRUSTYDB backend
 
-This is the Node.js + Oracle implementation for Review 2. It deliberately contains no frontend. It imports the three corrected CSVs, detects PRICE conflicts, calculates data-driven bootstrap reliability, produces explainable trust scores, and persists recommendations in Oracle.
+This is the Node.js + Oracle implementation for Review 2. It includes a functional browser-based review console served by the same Node.js service, so it needs no separate frontend deployment. The backend imports the three corrected CSVs, detects PRICE conflicts, calculates data-driven bootstrap reliability, produces explainable trust scores, and persists recommendations in Oracle.
 
 ## Prerequisites and setup
 
@@ -75,6 +75,60 @@ Start the backend API with `npm start`.
 | GET | `/api/sources/:id/history` | Latest history for a source |
 
 For example: `curl http://localhost:3000/api/health`.
+
+## Run with Docker
+
+The Docker image contains the API and the three corrected CSV files. It uses
+the Oracle Node.js driver's Thin mode, so it does not need Oracle Instant
+Client installed in the container.
+
+1. Copy and complete the local configuration if you have not already:
+
+   ```bash
+   cd "/Users/ayushsahu/Desktop/DBS Project/backend"
+   cp .env.example .env
+   ```
+
+2. If Oracle is running on your computer, set `ORACLE_CONNECT_STRING` in
+   `backend/.env` to `host.docker.internal:1521/FREEPDB1` (replace the service
+   name as appropriate). `127.0.0.1` inside the API container refers to the
+   container itself. If Oracle runs elsewhere, use its hostname instead.
+
+3. From the project directory, build and start the API:
+
+   ```bash
+   cd "/Users/ayushsahu/Desktop/DBS Project"
+   docker compose up --build -d
+   curl http://localhost:3000/api/health
+   ```
+
+The Oracle database is intentionally not included in Compose: this project
+expects the existing Oracle schema and source rows described above. Credentials
+remain in `backend/.env`, which is excluded from both Git and the Docker build
+context. View logs with `docker compose logs -f trustydb-api`; stop the API
+with `docker compose down`. To publish the image, tag it with your registry
+name after building, for example:
+
+```bash
+docker tag dbs-project-trustydb-api your-dockerhub-user/trustydb-api:latest
+docker push your-dockerhub-user/trustydb-api:latest
+```
+
+## Deploy on Render
+
+The repository includes `render.yaml`, so select **New + → Blueprint** in Render and connect the GitHub repository. Render installs dependencies with `npm ci`, starts the API with `npm start`, and checks `GET /api/health`. This health endpoint deliberately does not open a database connection, so a transient Oracle outage does not cause Render to restart a healthy HTTP process. Use `GET /api/health/database` to check actual Oracle reachability.
+
+Set these secret environment variables in the Render dashboard (they are intentionally not committed):
+
+| Variable | Example / purpose |
+| --- | --- |
+| `ORACLE_USER` | Oracle application username |
+| `ORACLE_PASSWORD` | Oracle application password |
+| `ORACLE_CONNECT_STRING` | A Render-reachable Oracle endpoint, such as `db.example.com:1521/FREEPDB1` |
+
+Do **not** set `ORACLE_CONNECT_STRING` to `127.0.0.1:1521/FREEPDB1` on Render: that address refers to the Render container, not the Oracle database on your computer. The database must be hosted publicly or connected through a secure network path that permits inbound traffic from Render. Restrict access at the database/firewall layer and use TLS or an Oracle Cloud wallet where your hosting setup supports it.
+
+The three corrected prototype CSV files are included in this repository so `POST /api/process` can run after deployment. Run it once after configuring Oracle, then verify `/api/conflicts`, `/api/recommendations`, and `/api/sources`. The process endpoint is intentionally not run during each deploy, preventing automatic reprocessing of your database.
 
 ## SQL*Plus demonstration
 

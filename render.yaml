@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: trustydb-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22.16.0
+      - key: ORACLE_USER
+        sync: false
+      - key: ORACLE_PASSWORD
+        sync: false
+      - key: ORACLE_CONNECT_STRING
+        sync: false
+      - key: FRESHNESS_WINDOW_DAYS
+        value: "30"

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="TRUSTYDB conflict review console" />
+    <title>TRUSTYDB · Review console</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <a class="brand" href="#overview" aria-label="TRUSTYDB overview">
+          <span class="brand-mark" aria-hidden="true">T</span>
+          <span><strong>TRUSTYDB</strong><small>Data trust review</small></span>
+        </a>
+        <nav>
+          <a class="nav-link is-active" href="#overview">Overview</a>
+          <a class="nav-link" href="#conflicts">Conflicts</a>
+          <a class="nav-link" href="#recommendations">Recommendations</a>
+          <a class="nav-link" href="#sources">Source history</a>
+        </nav>
+        <div class="sidebar-note">
+          <span class="status-dot" id="service-dot" aria-hidden="true"></span>
+          <span id="service-status">Checking service…</span>
+        </div>
+      </aside>
+
+      <main>
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Operational workspace</p>
+            <h1>Trust decisions, with their evidence.</h1>
+            <p class="lede">Review detected price conflicts and the records selected by the current trust model.</p>
+          </div>
+          <button class="button button-primary" id="process-button" type="button">Run processing</button>
+        </header>
+
+        <div class="alert" id="app-message" role="status" hidden></div>
+
+        <section id="overview" aria-labelledby="overview-title">
+          <div class="section-heading">
+            <div><p class="eyebrow">Current database state</p><h2 id="overview-title">At a glance</h2></div>
+            <button class="button button-quiet" id="refresh-button" type="button">Refresh data</button>
+          </div>
+          <dl class="metrics" aria-live="polite">
+            <div><dt>Detected conflicts</dt><dd id="conflict-count">—</dd><small>Distinct PRICE disagreements</small></div>
+            <div><dt>Recommendations</dt><dd id="recommendation-count">—</dd><small>Highest-trust records selected</small></div>
+            <div><dt>Sources assessed</dt><dd id="source-count">—</dd><small>With current reliability history</small></div>
+            <div><dt>Database status</dt><dd id="database-status">—</dd><small id="database-detail">Checking connection</small></div>
+          </dl>
+        </section>
+
+        <section id="conflicts" class="data-section" aria-labelledby="conflicts-title">
+          <div class="section-heading">
+            <div><p class="eyebrow">Conflict detection</p><h2 id="conflicts-title">Price conflicts</h2></div>
+            <p class="section-meta" id="conflicts-meta">Loading…</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Conflict</th><th scope="col">Entity</th><th scope="col">Product</th><th scope="col">Attribute</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">View</span></th></tr></thead>
+              <tbody id="conflicts-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="recommendations" class="data-section" aria-labelledby="recommendations-title">
+          <div class="section-heading">
+            <div><p class="eyebrow">Conflict resolution</p><h2 id="recommendations-title">Recommended records</h2></div>
+            <p class="section-meta">The recommendation preserves all alternatives.</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Entity</th><th scope="col">Product</th><th scope="col">Selected source</th><th scope="col">Price</th><th scope="col">Trust score</th><th scope="col"><span class="visually-hidden">View</span></th></tr></thead>
+              <tbody id="recommendations-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="sources" class="data-section" aria-labelledby="sources-title">
+          <div class="section-heading"><div><p class="eyebrow">Adaptive evidence</p><h2 id="sources-title">Source reliability</h2></div><p class="section-meta">Bootstrap consensus is used until verified outcomes are available.</p></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Source</th><th scope="col">Records</th><th scope="col">Verified</th><th scope="col">Correct</th><th scope="col">Reliability</th><th scope="col">Last evaluated</th></tr></thead>
+              <tbody id="sources-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <aside class="detail-panel" id="detail-panel" aria-labelledby="detail-title" aria-hidden="true">
+      <div class="detail-header"><div><p class="eyebrow">Conflict evidence</p><h2 id="detail-title">Details</h2></div><button class="icon-button" id="close-detail" type="button" aria-label="Close details">×</button></div>
+      <div id="detail-content"></div>
+    </aside>
+    <div class="scrim" id="scrim" hidden></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

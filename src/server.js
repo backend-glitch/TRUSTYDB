@@ -1,12 +1,45 @@
 import http from 'node:http';
+import path from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { closePool, getConnection } from './config/database.js';
 import { config } from './config/env.js';
 import { runPipeline } from './services/pipelineService.js';
 import * as db from './services/databaseService.js';
 
+const frontendDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../frontend');
+const contentTypes = {
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.webmanifest': 'application/manifest+json'
+};
+
 function send(response, status, payload) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
   response.end(JSON.stringify(payload, null, 2));
+}
+
+async function serveFrontend(request, response, pathname) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return false;
+  const relativePath = pathname === '/' ? 'index.html' : decodeURIComponent(pathname).replace(/^\/+/, '');
+  const requestedFile = path.resolve(frontendDirectory, relativePath);
+  if (requestedFile !== frontendDirectory && !requestedFile.startsWith(`${frontendDirectory}${path.sep}`)) {
+    send(response, 403, { error: 'Invalid path.' });
+    return true;
+  }
+  try {
+    const extension = path.extname(requestedFile);
+    if (!contentTypes[extension]) return false;
+    const content = await readFile(requestedFile);
+    response.writeHead(200, { 'Content-Type': contentTypes[extension], 'Cache-Control': 'no-cache' });
+    response.end(request.method === 'HEAD' ? undefined : content);
+    return true;
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
 }
 
 let processing = false;
@@ -18,6 +51,11 @@ const server = http.createServer(async (request, response) => {
     if (request.method === 'GET' && url.pathname === '/api/health') {
       return send(response, 200, { status: 'ok', service: 'trustydb-backend' });
     }
+    if (request.method === 'GET' && url.pathname === '/api/health/database') {
+      connection = await getConnection();
+      await connection.execute('SELECT 1 FROM dual');
+      return send(response, 200, { status: 'ok', database: 'reachable' });
+    }
     if (request.method === 'POST' && url.pathname === '/api/process') {
       if (processing) return send(response, 409, { error: 'A processing run is already active.' });
       processing = true;
@@ -26,6 +64,7 @@ const server = http.createServer(async (request, response) => {
       const report = await runPipeline(connection);
       return send(response, 200, report);
     }
+    if (await serveFrontend(request, response, url.pathname)) return;
     connection = await getConnection();
     if (request.method === 'GET' && url.pathname === '/api/conflicts') return send(response, 200, await db.fetchAllConflicts(connection));
     const conflictMatch = url.pathname.match(/^\/api\/conflicts\/(\d+)$/);
